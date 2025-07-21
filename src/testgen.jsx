@@ -1,5 +1,5 @@
 import getDescription from "./helpers/getdescription";
-import callOpenAI from "./helpers/callopenai";
+import callAWSBedrock from "./helpers/callAWSBedrock";
 import { getSelectedStatus, setGenStatus, storageGetHelper, storageSetHelper } from "./helpers/storageHelper";
 
 export async function run(event, context) {
@@ -30,11 +30,11 @@ export async function run(event, context) {
         console.log("extractedText: ", extractedText);
 
         const prompt = "Write test cases for the following story requirements: " + extractedText;
-        console.log("generating testcases from openai");
-        const responseOpenAI = await callOpenAI(prompt, projectKey);
-        console.log("response from OpenAI", responseOpenAI);
+        console.log("generating testcases from bedrock");
+        const responseBedrock = await callAWSBedrock(prompt, projectKey);
+        console.log("response from Bedrock", responseBedrock);
 
-        await storageSetHelper(event.issue.key, responseOpenAI);
+        await storageSetHelper(event.issue.key, responseBedrock);
         console.log("added testcases to story");
       }
     }

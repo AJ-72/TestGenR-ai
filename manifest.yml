@@ -4,11 +4,14 @@ permissions:
     - write:jira-work
     - manage:jira-configuration
     - manage:jira-project
-    - storage:app
+    - storage:app 
   external:
     fetch:
       backend:
-        - https://api.openai.com
+        - https://bedrock-runtime.us-east-1.amazonaws.com
+        - https://bedrock-runtime.us-west-2.amazonaws.com
+        - https://bedrock-runtime.eu-west-1.amazonaws.com
+        - https://bedrock-runtime.ap-southeast-1.amazonaws.com
   content:
     styles:
       - "unsafe-inline"
@@ -16,7 +19,7 @@ modules:
   jira:issuePanel:
     - key: testcase-issuePanel
       resource: AtlassianUI
-      title: Test(GenR)cases
+      title: AiTestGenerator
       resolver:
         function: resolver
       description: testcase generator
@@ -27,7 +30,7 @@ modules:
   jira:projectSettingsPage:
     - key: projectSettingsPage
       function: projectsetting
-      title: TestGenR config
+      title: TestcaseGenerator config
   trigger:
     - key: testgenai-casegen
       function: testgen
@@ -45,4 +48,6 @@ resources:
     path: static/AtlassianUI/build
 
 app:
-  id: ari:cloud:ecosystem::app/5218dcc8-b35d-40ab-8224-655c4de8b904
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/4b2d5248-2e67-4154-93ff-2efa11a0c5b3

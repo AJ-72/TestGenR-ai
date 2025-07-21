@@ -1,88 +1,68 @@
-# Forge TestGenR ai
+# AI TestGenerator
 
-This project contains a Forge app written in Javascript that create testcases when an issue is updated in Jira.
-
-To install in your site [Installation link](https://developer.atlassian.com/console/install/5218dcc8-b35d-40ab-8224-655c4de8b904?signature=3bbb307fccc5e0de0661248cdf8526b6848b532d4f4a89d4413338736236af634ebd175dbcffc2b040bbae9257effb34e100e526566ee41abddc821407aa8298&product=jira)
-
-See the [demo](https://youtu.be/QUb6g86jdoo) on how to use the app.
-
-#### No test cases
-
-![No test cases](src/assets/Testgenr_notestcases.jpg)
-
-#### With generated test cases
-
-![With generated test cases](src/assets/Testgenr_withtestcases.jpg)
-
-#### Config page
-
-![Config page](src/assets/Testgent_projectsettingpage.jpg)
+This is a JIRA plugin project that create testcases from the details provided in the story. This reduces the effort required for test case development.
 
 ## Inspiration
+This is a clone of an open source project - https://github.com/Nitheeshskumar/TestGenR-ai
 
-Test cases are an essential component of software development, ensuring that software meets quality standards, is free of bugs, and functions as intended.
+## Goal
 
-**Problem Statement**
-
-Even though automated testing is in place, manual testing is crucial since at the end of the day, most softwares are used by humans. But the documentation of testcases is a heavy task for developers/QA which consumes time that could be spent on tasks that require actual human involvement.
-Moreover, in many projects testers depend on spreadsheets to manually write testcases and upload it to third party suits (like Zephyr) even if it has integration with Jira.
-Testcases are written outside Jira and then later integrated with Issues
-
-With the rise of AI and machine learning, developers can now harness the power of these technologies to streamline their testing processes and create high-quality software.
+To reduce the effort in test case development and increase test case coverage by leveraging LLMs. With this tool being available within JIRA it becomes easy for all team members to use. 
 
 ## What it does
 
 TestGenR is an OpenAI powered Jira app that generates testcases based on story description.
 
-1. Add a trigger status (like Ready for Test) upon whose transition will automatically read the story descriptions and adds a list of testcases under the story.
+1. Add a trigger status (from To Do -> In Refinement) upon whose transition a LLM will automatically read the story descriptions and add testcases under the story.
 2. The testcases are generated only if the issue type is a 'story' and will not regenerate testcases if it already exist.
 3. The testcases can be fine-tuned by adding more to the statement, can be marked as verified, deleted or even add a new testcase.
-4. The testcases can be directly downloaded as a csv file for further modifications or integrations with other suits.
 
-## How we built it
+## Configuration
 
-1. The TestGenR config panel is built using **Forge UI kit**
-2. TestGenR testcases is added as an **issuePanel** and is developed using **Custom UI** following **Atlaskit design system**, **resolver** that uses **Properties API**.
-3. The backend is developed in nodejs using **Forge API** and the generation of testcases is done using **OpenAI gpt3.5-turbo** model.
+### Project-Level AWS Bedrock Setup
 
-## Challenges we ran into
+Each Jira project can be configured independently with its own AWS Bedrock settings:
 
-1. We started using IssueGlance with UI kit but on oct 3rd, it was deemed deprecated, hence we switched to IssueContext.
-2. UI kit was not flexible with styling hence we switched to Custom UI.
-3. The editing of testcases was initially done inside a modal in UI kit, but with custom UI,, the modal is no longer appearing in center of the page,(fits within the iframe), later we moved to IssuePanel and inline edit
-4. After moving to custom UI, we explored Atlaskit and inline edit components. We needed to add the checkbox label as the trigger of switching to inline edit which was not possible by default. We added the checkbox label as a React.node and added click handler to toggle the edit view while not triggering the checkbox selection.
-5. The responses from GPT model were conversation based, while we required json array only. This was overcame by using schema functions.
-6. OpenAI key limit was exhausted during development, hence we created another free trial account with different credentials.
+#### 1. Access Project Settings
+- Go to your Jira project
+- Click **Project Settings** (gear icon)
+- Find **"TestcaseGenerator config"** in the left sidebar
 
-## Accomplishments that we're proud of
+#### 2. Configure AWS Bedrock
+- **AWS Access Key ID**: Your AWS IAM access key with Bedrock permissions
+- **AWS Secret Access Key**: Corresponding secret key
+- **AWS Region**: Region where Bedrock is enabled (e.g., us-east-1, us-west-2, eu-west-1, ap-southeast-1)
+- **Trigger Status**: Jira status that triggers test case generation (e.g., "Ready for Test")
 
-1. Was able to identify a problem statement after our experiences with agile development.
-2. Learned to use various forge apis, ui kit, custom ui, OpenAI.
-3. Was able to migrate to IssueContext and finally to IssuePanel after seeing that IssueGlance was deprecated. Was able to migrate to Custom UI from easy to use UI kit. Overcame its limitations.
-4. Was able to integrate the checkbox label and inline edit of Atlaskit components
+#### 3. AWS Prerequisites
+- AWS account with Bedrock service access
+- IAM user with `bedrock:InvokeModel` permission
+- Claude model enabled in your chosen AWS region
+- Sufficient AWS Bedrock usage quotas
 
-## What we learned
+#### 4. Model Details
+- **AI Model**: Anthropic Claude-3-Haiku (via AWS Bedrock)
+- **Max Tokens**: 1000 per request
+- **Input**: Story description text
+- **Output**: Structured JSON array of test cases
 
-1. Forge platform, manifest rules.
-2. Forge APIs, fetch, route, Properties API and Storage API - its usage, comparison and limitations.
-3. UI kit, UI kit2, Custom UI, forge bridge
-4. Atlassian design system, Jira modules, Project settings
-5. Chat completion using schema in gpt.
-6. Excel export in react.
+### Per-Project Isolation
+- Each project maintains separate AWS credentials
+- Different projects can use different AWS regions
+- Trigger statuses can vary per project
+- No cross-project data sharing
 
-## What's next for TestGenR AI
+### Usage
+1. Create a Story issue with detailed description
+2. Transition the story to your configured trigger status
+3. Test cases automatically appear in the "Test(GenR)cases" panel
+4. Edit, verify, or export test cases as needed
 
-1. Currently the app is only trained to read the paragraphs in story description. With further improvements, it can be made to read, lists, tables, images, code.
-2. Automatically send the exported excel to the integrated platforms like Zephyr.
-3. Code for testcases can also be generated with this app (currently the app is capable of doing it, but we haven't enabled so as to reduce the OpenAI token billing). This will give an outline to write unit testcases for the developers.
+## Technical details
 
-# Clone and Make your changes
-
-See [developer.atlassian.com/platform/forge/](https://developer.atlassian.com/platform/forge) for documentation and tutorials explaining Forge.
-
-## Requirements
-
-See [Set up Forge](https://developer.atlassian.com/platform/forge/set-up-forge/) for instructions to get set up.
+1. The application config panel is built using **Forge UI kit**
+2. Testcases is added as an **issuePanel** and is developed using **Custom UI** following **Atlaskit design system**, **resolver** that uses **Properties API**.
+3. The backend is developed in nodejs using **Forge API** and the generation of testcases is done using **Internal AWS Bedrock** model.
 
 ## Quick start
 
@@ -112,6 +92,32 @@ forge tunnel
 - Use the `forge install` command when you want to install the app on a new site.
 - Once the app is installed on a site, the site picks up the new app changes you deploy without needing to rerun the install command.
 
-## Support
+## Permissions
 
-See [Get help](https://developer.atlassian.com/platform/forge/get-help/) for how to get help and provide feedback.
+This app requires the following permissions to function properly:
+
+### Jira Permissions
+- **`read:jira-work`** - Read issue data, descriptions, and status information
+- **`write:jira-work`** - Store generated test cases on individual issues
+- **`manage:jira-configuration`** - Enable project settings page for app configuration
+- **`manage:jira-project`** - Store project-level AWS credentials and trigger settings
+- **`storage:app`** - Store app-specific data and configuration
+
+### External API Access
+- **AWS Bedrock Runtime** - Connect to AWS Bedrock API endpoints in multiple regions:
+  - us-east-1, us-west-2, eu-west-1, ap-southeast-1
+
+### What This App Does NOT Access
+- ❌ No global Jira settings modifications
+- ❌ No system-wide configuration changes
+- ❌ No access to other projects' data (unless explicitly configured)
+- ❌ No user personal information beyond project context
+- ❌ No modification of existing workflows or schemes
+
+### Data Storage Scope
+- **Project-Level**: AWS credentials and trigger status (isolated per project)
+- **Issue-Level**: Generated test cases (stored on individual stories)
+- **App-Specific**: All data is namespaced to this app only
+
+
+

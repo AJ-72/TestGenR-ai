@@ -8,8 +8,14 @@ export const storageSetHelper = async (issueKey, record) =>
 export const getSelectedStatus = async (projectKey) =>
   await properties.onJiraProject(projectKey).get("test-genR-trigger-status");
 
-export const getSelectedApikey = async (projectKey) =>
-  await properties.onJiraProject(projectKey).get("test-genR-openaikey");
+export const getAwsCredentials = async (projectKey) => {
+  const accessKeyId = await properties.onJiraProject(projectKey).get("test-genR-aws-access-key");
+  const secretAccessKey = await properties.onJiraProject(projectKey).get("test-genR-aws-secret-key");
+  return { accessKeyId, secretAccessKey };
+};
+
+export const getAwsRegion = async (projectKey) =>
+  await properties.onJiraProject(projectKey).get("test-genR-aws-region") || "us-east-1";
 
 export const getGenStatus = async (issueKey) => await properties.onJiraIssue(issueKey).get("test-genR-status");
 

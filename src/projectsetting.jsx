@@ -18,7 +18,7 @@ const TestGenRConfig = () => {
   const context = useProductContext();
   const [showMessage, setShowMessage] = useState(false);
   const getStatuses = async () => {
-    console.log("TestGenr Config log: fetching statuses");
+    console.log("AI TestGenerator Config log: fetching statuses");
     try {
       const response = await api.asApp().requestJira(route`/rest/api/3/status`, {
         headers: {
@@ -30,27 +30,29 @@ const TestGenRConfig = () => {
       const result = await response.json();
       return result.map(({ name, id }) => ({ name, id }));
     } catch (e) {
-      console.log("TestGenr Config log: failed to get statuses", e);
+      console.log("AI TestGenerator Config log: failed to get statuses", e);
       return "false";
     }
   };
   const getSelectedStatus = async () => {
     try {
-      console.log("TestGenr Config log: fetching selected trigger status");
+      console.log("AI TestGenerator Config log: fetching selected trigger status");
       let response = await properties.onJiraProject(context.platformContext.projectKey).get("test-genR-trigger-status");
 
       return response;
     } catch (e) {
-      console.log("TestGenr Config log: failed to get trigger status", e);
+      console.log("AI TestGenerator Config log: failed to get trigger status", e);
     }
   };
-  const getApiKey = async () => {
+  const getAwsConfig = async () => {
     try {
-      console.log("TestGenr Config log: fetching OpenAI key");
-      let response = await properties.onJiraProject(context.platformContext.projectKey).get("test-genR-openaikey");
-      return response;
+      console.log("AI TestGenerator Config log: fetching AWS config");
+      const accessKey = await properties.onJiraProject(context.platformContext.projectKey).get("test-genR-aws-access-key");
+      const secretKey = await properties.onJiraProject(context.platformContext.projectKey).get("test-genR-aws-secret-key");
+      const region = await properties.onJiraProject(context.platformContext.projectKey).get("test-genR-aws-region");
+      return { accessKey, secretKey, region };
     } catch (e) {
-      console.log("TestGenr Config log: failed to get OpenAI key", e);
+      console.log("AI TestGenerator Config log: failed to get AWS config", e);
     }
   };
   const [statuses] = useAction(
@@ -65,18 +67,18 @@ const TestGenRConfig = () => {
       return await getSelectedStatus();
     }
   );
-  const [defaultApiKey, setDefaultApiKey] = useAction(
+  const [defaultAwsConfig, setDefaultAwsConfig] = useAction(
     (value, step) => step,
     async () => {
-      return await getApiKey();
+      return await getAwsConfig();
     }
   );
   useEffect(() => {
     getStatuses();
   }, []);
-  //check if new key is submitted
-  const checkKeyUpdate = (newkey) => {
-    if (defaultApiKey !== newkey) {
+  //check if new config is submitted
+  const checkConfigUpdate = (newConfig) => {
+    if (defaultAwsConfig?.accessKey !== newConfig.accessKey) {
       setShowMessage(true);
     }
     return true;
@@ -87,17 +89,19 @@ const TestGenRConfig = () => {
 
   // Handles form submission, which is a good place to call APIs, or to set component state...
   const onSubmit = async (formData) => {
-    console.log("TestGenr Config log: submitting trigger status", formData);
+    console.log("AI TestGenerator Config log: submitting config", formData);
     try {
       await properties
         .onJiraProject(context.platformContext.projectKey)
         .set("test-genR-trigger-status", formData.milestone);
-      await properties.onJiraProject(context.platformContext.projectKey).set("test-genR-openaikey", formData.openaikey);
+      await properties.onJiraProject(context.platformContext.projectKey).set("test-genR-aws-access-key", formData.accessKey);
+      await properties.onJiraProject(context.platformContext.projectKey).set("test-genR-aws-secret-key", formData.secretKey);
+      await properties.onJiraProject(context.platformContext.projectKey).set("test-genR-aws-region", formData.region || "us-east-1");
       setDefaultselected(formData.milestone);
-      setDefaultApiKey(formData.openaikey);
-      checkKeyUpdate(formData.openaikey);
+      setDefaultAwsConfig({ accessKey: formData.accessKey, secretKey: formData.secretKey, region: formData.region });
+      checkConfigUpdate({ accessKey: formData.accessKey });
     } catch (e) {
-      console.log("TestGenr Config log: error on setting trigger status", e);
+      console.log("TestGenr Config log: error on setting config", e);
     }
     return true;
   };
@@ -105,7 +109,7 @@ const TestGenRConfig = () => {
   return (
     <ProjectSettingsPage>
       <Text>
-        TestGenR uses OpenAI to generate test cases after reading the story description. Add a trigger 'transition to
+        AI TestGenerator uses AWS Bedrock to generate test cases after reading the story description. Add a trigger 'transition to
         status' to automatically generate the test cases. Its recommended to choose a status when the story is ready for
         test. This ensures the story descriptions are finalized and avoid generating test cases for stories that don't
         require testing.
@@ -119,20 +123,34 @@ const TestGenRConfig = () => {
           </Select>
 
           <TextField
-            name="openaikey"
-            label="Your OpenAI key to use the service"
-            placeholder="Your key"
-            defaultValue={defaultApiKey}
+            name="accessKey"
+            label="AWS Access Key ID"
+            placeholder="Your AWS Access Key"
+            defaultValue={defaultAwsConfig?.accessKey}
+            isRequired
+          />
+          <TextField
+            name="secretKey"
+            label="AWS Secret Access Key"
+            placeholder="Your AWS Secret Key"
+            defaultValue={defaultAwsConfig?.secretKey}
+            isRequired
+          />
+          <TextField
+            name="region"
+            label="AWS Region"
+            placeholder="us-east-1"
+            defaultValue={defaultAwsConfig?.region || "us-east-1"}
           />
           <Text>
             {" "}
             Go to{" "}
-            <Link href="https://platform.openai.com/account/api-keys" openNewTab>
-              API keys
+            <Link href="https://console.aws.amazon.com/iam/home#/security_credentials" openNewTab>
+              AWS IAM Console
             </Link>{" "}
-            to create new key from your OpenAI account
+            to create AWS credentials with Bedrock access
           </Text>
-          {showMessage && <SectionMessage title="API key updated" appearance="confirmation"></SectionMessage>}
+          {showMessage && <SectionMessage title="AWS credentials updated" appearance="confirmation"></SectionMessage>}
         </Form>
       )}
     </ProjectSettingsPage>
