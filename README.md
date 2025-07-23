@@ -11,7 +11,7 @@ To reduce the effort in test case development and increase test case coverage by
 
 ## What it does
 
-TestGenR is an OpenAI powered Jira app that generates testcases based on story description.
+AI TestGenerator is an LLM powered Jira plugin that generates testcases based on story description.
 
 1. Add a trigger status (from To Do -> In Refinement) upon whose transition a LLM will automatically read the story descriptions and add testcases under the story.
 2. The testcases are generated only if the issue type is a 'story' and will not regenerate testcases if it already exist.
