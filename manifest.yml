@@ -4,17 +4,17 @@ permissions:
     - write:jira-work
     - manage:jira-configuration
     - manage:jira-project
-    - storage:app 
+    - storage:app
   external:
     fetch:
       backend:
-        - https://bedrock-runtime.us-east-1.amazonaws.com
-        - https://bedrock-runtime.us-west-2.amazonaws.com
-        - https://bedrock-runtime.eu-west-1.amazonaws.com
-        - https://bedrock-runtime.ap-southeast-1.amazonaws.com
+        - address: https://bedrock-runtime.us-east-1.amazonaws.com
+        - address: https://bedrock-runtime.us-west-2.amazonaws.com
+        - address: https://bedrock-runtime.eu-west-1.amazonaws.com
+        - address: https://bedrock-runtime.ap-southeast-1.amazonaws.com
   content:
     styles:
-      - "unsafe-inline"
+      - unsafe-inline
 modules:
   jira:issuePanel:
     - key: testcase-issuePanel
@@ -23,13 +23,15 @@ modules:
       resolver:
         function: resolver
       description: testcase generator
-      label: Testcases
+      label: Test(GenR)cases
       icon: resource:AtlassianUI;issues.svg
       displayConditions:
         issueType: Story
   jira:projectSettingsPage:
     - key: projectSettingsPage
-      function: projectsetting
+      resource: ProjectSettings
+      resolver:
+        function: projectsetting
       title: TestcaseGenerator config
   trigger:
     - key: testgenai-casegen
@@ -42,12 +44,14 @@ modules:
     - key: resolver
       handler: resolver.handler
     - key: projectsetting
-      handler: projectsetting.run
+      handler: projectsetting.handler
 resources:
   - key: AtlassianUI
     path: static/AtlassianUI/build
+  - key: ProjectSettings
+    path: static/ProjectSettings/build
 
 app:
   runtime:
-    name: nodejs18.x
+    name: nodejs20.x
   id: ari:cloud:ecosystem::app/4b2d5248-2e67-4154-93ff-2efa11a0c5b3

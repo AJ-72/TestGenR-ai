@@ -30,18 +30,35 @@ function App() {
   const [input, setInput] = useState("");
   const [isFetched, setIsFetched] = useState(false);
   const [loading, setLoading] = useState(false);
-  console.log("tests", tests);
+  
+  console.log(`[UI DEBUG] App component loaded at ${new Date().toISOString()}`);
+  console.log(`[UI DEBUG] Current state:`, { tests: tests?.length || 'undefined', isFetched, loading });
   useEffect(() => {
+    console.log(`[UI DEBUG] useEffect triggered, isFetched: ${isFetched}`);
     if (!isFetched) {
       setIsFetched(true);
+      console.log(`[UI DEBUG] Calling get-all resolver`);
+      
+      // Add test connection call
+      invoke("test-connection").then((testResult) => {
+        console.log(`[UI DEBUG] Test connection result:`, testResult);
+      }).catch((error) => {
+        console.log(`[UI DEBUG] Test connection failed:`, error);
+      });
+      
       invoke("get-all").then((values) => {
-        console.log("values", values);
+        console.log(`[UI DEBUG] get-all response:`, values);
         if (values === "failed") {
+          console.log(`[UI DEBUG] Setting loading state due to failed response`);
           setLoading(true);
           return;
         }
 
+        console.log(`[UI DEBUG] Setting tests with ${values?.length || 0} items`);
         setTests(values);
+      }).catch((error) => {
+        console.log(`[UI DEBUG] get-all failed:`, error);
+        setTests([]);
       });
     }
   }, [isFetched]);
