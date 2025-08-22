@@ -1,14 +1,5 @@
 import { fetch } from "@forge/api";
-import { getAwsCredentials, getAwsRegion } from "./storageHelper";
-import { properties } from "@forge/api";
-
-const getSessionToken = async (projectKey) => {
-  try {
-    return await properties.onJiraProject(projectKey).get('test-genR-aws-session-token');
-  } catch {
-    return null;
-  }
-};
+import { getAwsCredentials, getAwsRegion, getSessionToken } from "./storageHelper";
 
 const callAWSBedrock = async (prompt, projectKey) => {
   const systemPrompt = "You are an experienced software tester and QA engineer with expertise in creating comprehensive test scenarios. Analyze the provided user story and generate detailed test cases that cover functional requirements, edge cases, negative scenarios, and boundary conditions. Consider user workflows, data validation, error handling, and integration points. Use orthogonal array methodology to reduce the combinations. Focus on both happy path and potential failure scenarios to ensure thorough test coverage.";
@@ -48,7 +39,6 @@ const callAWSBedrock = async (prompt, projectKey) => {
 
     console.log("Bedrock API request:", { url, headers, payload });
     const response = await fetch(url, options);
-     console.log("Bedrock API response:", JSON.stringify(response.json, null, 2));     
     if (response.status === 200) {
       const data = await response.json();
       console.log("Bedrock API response:", JSON.stringify(data, null, 2));
@@ -72,7 +62,7 @@ const callAWSBedrock = async (prompt, projectKey) => {
   }
 };
 
-// AWS Signature V4 signing
+// AWS Signature V4 signing - CORRECTED VERSION
 const createAwsHeaders = async (url, body, accessKeyId, secretAccessKey, region, sessionToken = null) => {
   const service = 'bedrock';
   const method = 'POST';
@@ -80,21 +70,25 @@ const createAwsHeaders = async (url, body, accessKeyId, secretAccessKey, region,
   const date = new Date().toISOString().replace(/[:\-]/g, '').replace(/\..*/g, 'Z');
   const dateStamp = date.substr(0, 8);
   
+  // Fix 1: Proper canonical URI encoding
+  const canonicalUri = '/model/anthropic.claude-3-haiku-20240307-v1%3A0/invoke';
+  
+  // Fix 2: Correct canonical headers order and format
   const canonicalHeaders = sessionToken 
     ? `content-type:application/json\nhost:${host}\nx-amz-date:${date}\nx-amz-security-token:${sessionToken}\n`
     : `content-type:application/json\nhost:${host}\nx-amz-date:${date}\n`;
   const signedHeaders = sessionToken ? 'content-type;host;x-amz-date;x-amz-security-token' : 'content-type;host;x-amz-date';
-  const payloadHash = sha256(body);
+  const payloadHash = await sha256(body);
   
-  const canonicalRequest = `${method}\n/model/anthropic.claude-3-haiku-20240307-v1%3A0/invoke\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  // Fix 3: Proper canonical request format
+  const canonicalRequest = `${method}\n${canonicalUri}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
   
   const algorithm = 'AWS4-HMAC-SHA256';
   const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
-  const stringToSign = `${algorithm}\n${date}\n${credentialScope}\n${sha256(canonicalRequest)}`;
+  const stringToSign = `${algorithm}\n${date}\n${credentialScope}\n${await sha256(canonicalRequest)}`;
   
-  const signingKey = getSignatureKey(secretAccessKey, dateStamp, region, service);
-  const crypto = require('crypto');
-  const signature = crypto.createHmac('sha256', signingKey).update(stringToSign).digest('hex');
+  const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, service);
+  const signature = await hmacSha256(signingKey, stringToSign);
   
   const authorizationHeader = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
   
@@ -111,21 +105,41 @@ const createAwsHeaders = async (url, body, accessKeyId, secretAccessKey, region,
   return headers;
 };
 
-const sha256 = (message) => {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(message).digest('hex');
+// Fix 4: Corrected HMAC and signing key functions
+const hmacSha256 = async (key, message) => {
+  const encoder = new TextEncoder();
+  const messageData = encoder.encode(message);
+  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
-const getSignatureKey = (key, dateStamp, regionName, serviceName) => {
-  const crypto = require('crypto');
-  const kDate = crypto.createHmac('sha256', 'AWS4' + key).update(dateStamp).digest();
-  const kRegion = crypto.createHmac('sha256', kDate).update(regionName).digest();
-  const kService = crypto.createHmac('sha256', kRegion).update(serviceName).digest();
-  const kSigning = crypto.createHmac('sha256', kService).update('aws4_request').digest();
+const sha256 = async (message) => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+const getSignatureKey = async (key, dateStamp, regionName, serviceName) => {
+  const encoder = new TextEncoder();
+  const kDate = await hmacSha256Raw(encoder.encode('AWS4' + key), dateStamp);
+  const kRegion = await hmacSha256Raw(kDate, regionName);
+  const kService = await hmacSha256Raw(kRegion, serviceName);
+  const kSigning = await hmacSha256Raw(kService, 'aws4_request');
   return kSigning;
 };
 
-export const testAwsBedrockConnection = async (accessKeyId, secretAccessKey, region = 'us-east-1') => {
+const hmacSha256Raw = async (key, message) => {
+  const encoder = new TextEncoder();
+  const messageData = encoder.encode(message);
+  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  return new Uint8Array(signature);
+};
+
+
+export const testAwsBedrockConnection = async (accessKeyId, secretAccessKey, region = 'us-east-1', sessionToken = null) => {
   const testPrompt = 'Test connection';
   const url = `https://bedrock-runtime.${region}.amazonaws.com/model/anthropic.claude-3-haiku-20240307-v1:0/invoke`;
   
@@ -139,7 +153,7 @@ export const testAwsBedrockConnection = async (accessKeyId, secretAccessKey, reg
   };
 
   try {
-    const headers = await createAwsHeaders(url, JSON.stringify(payload), accessKeyId, secretAccessKey, region);
+    const headers = await createAwsHeaders(url, JSON.stringify(payload), accessKeyId, secretAccessKey, region, sessionToken);
     
     const response = await fetch(url, {
       method: "POST",

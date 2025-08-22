@@ -25,8 +25,6 @@ modules:
       description: testcase generator
       label: Test(GenR)cases
       icon: resource:AtlassianUI;issues.svg
-      displayConditions:
-        issueType: Story
   jira:projectSettingsPage:
     - key: projectSettingsPage
       resource: ProjectSettings

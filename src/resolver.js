@@ -12,8 +12,24 @@ const getIssueKeyFromContext = (context) => {
   const issueKey = context?.extension?.issue?.key;
   if (!issueKey) {
     console.log(`[RESOLVER ERROR] No issue key found in context:`, JSON.stringify(context?.extension));
+    console.log(`[RESOLVER ERROR] Full context structure:`, JSON.stringify(context, null, 2));
   }
   return issueKey;
+};
+
+const validateContext = (context) => {
+  const validation = {
+    hasContext: !!context,
+    hasExtension: !!context?.extension,
+    hasIssue: !!context?.extension?.issue,
+    hasIssueKey: !!context?.extension?.issue?.key,
+    hasProject: !!context?.extension?.project,
+    hasProjectKey: !!context?.extension?.project?.key,
+    issueKey: context?.extension?.issue?.key,
+    projectKey: context?.extension?.project?.key
+  };
+  console.log(`[RESOLVER DEBUG] Context validation:`, validation);
+  return validation;
 };
 async function wait(ms) {
   return new Promise((resolve) => {
@@ -66,6 +82,13 @@ const getGenrStatus = async (context, attempt) => {
 resolver.define("get-all", async ({ context }) => {
   console.log(`[RESOLVER DEBUG] get-all called`);
   try {
+    const validation = validateContext(context);
+    
+    if (!validation.hasIssueKey) {
+      console.log(`[RESOLVER ERROR] Cannot proceed without issue key`);
+      return [];
+    }
+    
     const issueKey = getIssueKeyFromContext(context);
     const projectKey = context.extension?.project?.key;
     
@@ -159,12 +182,27 @@ resolver.define("test-connection", async ({ context }) => {
   console.log(`[RESOLVER DEBUG] Issue type: ${context?.extension?.issue?.issueType}`);
   console.log(`[RESOLVER DEBUG] Project key: ${context?.extension?.project?.key}`);
   
+  const validation = validateContext(context);
+  
   return {
     success: true,
     issueKey: context?.extension?.issue?.key,
     issueType: context?.extension?.issue?.issueType,
     projectKey: context?.extension?.project?.key,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    validation
+  };
+});
+
+// Debug resolver to test if resolver system is working
+resolver.define("debug-panel", async ({ context }) => {
+  console.log(`[RESOLVER DEBUG] Debug panel resolver called at ${new Date().toISOString()}`);
+  console.log(`[RESOLVER DEBUG] Resolver is working correctly`);
+  
+  return {
+    message: "Resolver is working!",
+    timestamp: new Date().toISOString(),
+    context: validateContext(context)
   };
 });
 
@@ -210,6 +248,13 @@ resolver.define("execute-aws-test", async ({ context }) => {
     console.log(`[RESOLVER ERROR] Test execution failed:`, error.message);
     return { success: false, message: 'Test execution failed', error: error.message };
   }
+});
+
+// Add a simple test resolver that logs immediately when called
+resolver.define("simple-test", async () => {
+  console.log(`[RESOLVER CRITICAL] Simple test resolver called at ${new Date().toISOString()}`);
+  console.log(`[RESOLVER CRITICAL] This proves the resolver system is working`);
+  return { success: true, message: "Simple test works" };
 });
 
 console.log(`[RESOLVER DEBUG] Resolver definitions loaded:`, Object.keys(resolver.getDefinitions()));

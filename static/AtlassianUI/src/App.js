@@ -33,6 +33,16 @@ function App() {
   
   console.log(`[UI DEBUG] App component loaded at ${new Date().toISOString()}`);
   console.log(`[UI DEBUG] Current state:`, { tests: tests?.length || 'undefined', isFetched, loading });
+  
+  // Test if resolver system works at all
+  useEffect(() => {
+    console.log(`[UI DEBUG] Testing resolver system...`);
+    invoke("simple-test").then((result) => {
+      console.log(`[UI DEBUG] Simple test result:`, result);
+    }).catch((error) => {
+      console.log(`[UI DEBUG] Simple test failed:`, error);
+    });
+  }, []);
   useEffect(() => {
     console.log(`[UI DEBUG] useEffect triggered, isFetched: ${isFetched}`);
     if (!isFetched) {
